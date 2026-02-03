@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HurricaneOps | Command & Control</title>
+    <meta name="description" content="AI-powered emergency command and control platform">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Apple-style favicon -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230A84FF'><circle cx='12' cy='12' r='10'/></svg>">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <!-- Apple SF Symbol style globe -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M2 12h20" />
+                            <path
+                                d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                        </svg>
+                    </div>
+                    <span class="logo-text">HurricaneOps</span>
+                </div>
+                <div class="powered-by">
+                    <span class="cerebras-badge">
+                        <!-- Bolt icon -->
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M13 3L4 14h7l-2 7 9-11h-7l2-7z" />
+                        </svg>
+                        Cerebras AI
+                    </span>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="weather-badge critical">
+                    <!-- Hurricane icon -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 2a10 10 0 1 0 10 10" />
+                        <path d="M12 12a6 6 0 1 0-6 6" />
+                        <circle cx="12" cy="12" r="2" />
+                    </svg>
+                    <span>CAT <span id="hurricane-cat">3</span></span>
+                </div>
+                <div class="weather-badge warning">
+                    <!-- Wind icon -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
+                        <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
+                        <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
+                    </svg>
+                    <span><span id="wind-speed">120</span> mph</span>
+                </div>
+                <div class="weather-badge warning">
+                    <!-- Wave icon -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path
+                            d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+                        <path
+                            d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+                        <path
+                            d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+                    </svg>
+                    <span><span id="storm-surge">6.2</span> ft</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator" id="ai-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">AI Ready</span>
+                </div>
+                <div class="time-display" id="current-time">--:--:--</div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Panel - Incidents -->
+            <aside class="panel left-panel">
+                <div class="panel-header">
+                    <h2>
+                        <!-- Exclamation triangle -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                        Incidents
+                    </h2>
+                    <div class="panel-actions">
+                        <button class="icon-btn" id="btn-add-incident" title="Create Incident">
+                            <!-- Plus circle -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M12 8v8M8 12h8" />
+                            </svg>
+                        </button>
+                        <span class="badge" id="incident-count">0</span>
+                    </div>
+                </div>
+                <div class="panel-content" id="incidents-list"></div>
+            </aside>
+
+            <!-- Center - Map -->
+            <main class="map-container">
+                <div id="map"></div>
+
+                <!-- Map Controls -->
+                <div class="map-controls">
+                    <button class="control-btn" id="btn-refresh" title="Refresh">
+                        <!-- Arrow path -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                            <path d="M21 3v5h-5" />
+                        </svg>
+                    </button>
+                    <button class="control-btn" id="btn-center" title="Center Map">
+                        <!-- Location crosshair -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="4" />
+                            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                        </svg>
+                    </button>
+                    <button class="control-btn active" id="btn-incidents" title="Toggle Incidents">
+                        <!-- Exclamation triangle -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        </svg>
+                    </button>
+                    <button class="control-btn active" id="btn-assets" title="Toggle Assets">
+                        <!-- Shield -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Stats Bar -->
+                <div class="stats-bar">
+                    <div class="stat">
+                        <span class="stat-value" id="stat-critical">0</span>
+                        <span class="stat-label">Critical</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="stat-affected">0</span>
+                        <span class="stat-label">Affected</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="stat-available">0</span>
+                        <span class="stat-label">Available</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="stat-deployed">0</span>
+                        <span class="stat-label">Deployed</span>
+                    </div>
+                </div>
+
+                <!-- AI Chat -->
+                <div class="ai-chat-bar">
+                    <div class="ai-chat-wrapper">
+                        <div class="ai-chat-icon">
+                            <!-- Sparkles icon for AI -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path
+                                    d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+                                <path d="M20 3v4M22 5h-4" />
+                            </svg>
+                        </div>
+                        <input type="text" id="ai-chat-input" placeholder="Ask AI about the situation..."
+                            autocomplete="off">
+                        <button class="ai-send-btn" id="ai-send-btn">
+                            <!-- Arrow up circle -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 19V5M5 12l7-7 7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="ai-response" id="ai-response"></div>
+                </div>
+            </main>
+
+            <!-- Right Panel -->
+            <aside class="panel right-panel">
+                <!-- Agent Section -->
+                <div class="agents-section">
+                    <div class="panel-header agents-header">
+                        <h2>
+                            <!-- CPU icon -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="4" y="4" width="16" height="16" rx="2" />
+                                <rect x="9" y="9" width="6" height="6" />
+                                <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" />
+                            </svg>
+                            AI Agents
+                        </h2>
+                        <button class="icon-btn" id="btn-agent-graph" title="View Workflow" style="margin-right: 8px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1" />
+                                <rect x="14" y="3" width="7" height="7" rx="1" />
+                                <path d="M10 6.5h4" />
+                                <path d="M6.5 10v4" />
+                                <circle cx="6.5" cy="17.5" r="3.5" />
+                            </svg>
+                        </button>
+                        <button class="btn-primary" id="btn-start-agents">
+                            <span>▶ Start</span>
+                        </button>
+                    </div>
+
+                    <div class="agents-grid" id="agents-grid">
+                        <div class="agent-avatar" data-agent="situation_analyst">
+                            <div class="agent-icon">
+                                <!-- Eye icon -->
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </div>
+                            <span class="agent-name">Analyst</span>
+                            <span class="agent-status">idle</span>
+                            <div class="thinking-indicator"></div>
+                        </div>
+                        <div class="agent-avatar" data-agent="triage_agent">
+                            <div class="agent-icon">
+                                <!-- Activity icon -->
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                                </svg>
+                            </div>
+                            <span class="agent-name">Triage</span>
+                            <span class="agent-status">idle</span>
+                            <div class="thinking-indicator"></div>
+                        </div>
+                        <div class="agent-avatar" data-agent="resource_coordinator">
+                            <div class="agent-icon">
+                                <!-- Grid icon -->
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                                </svg>
+                            </div>
+                            <span class="agent-name">Resources</span>
+                            <span class="agent-status">idle</span>
+                            <div class="thinking-indicator"></div>
+                        </div>
+                        <div class="agent-avatar" data-agent="routing_agent">
+                            <div class="agent-icon">
+                                <!-- Map pin icon -->
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                                    <circle cx="12" cy="10" r="3" />
+                                </svg>
+                            </div>
+                            <span class="agent-name">Routing</span>
+                            <span class="agent-status">idle</span>
+                            <div class="thinking-indicator"></div>
+                        </div>
+                        <div class="agent-avatar command-agent" data-agent="command_agent">
+                            <div class="agent-icon">
+                                <!-- Shield check icon -->
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                    <path d="m9 12 2 2 4-4" />
+                                </svg>
+                            </div>
+                            <span class="agent-name">Command</span>
+                            <span class="agent-status">idle</span>
+                            <div class="thinking-indicator"></div>
+                        </div>
+                    </div>
+
+                    <div class="agent-messages" id="agent-messages">
+                        <div class="agent-placeholder">
+                            <!-- Message icon -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                            <p>Click "Start" to activate AI agents</p>
+                        </div>
+                    </div>
+
+                    <div class="agent-metrics" id="agent-metrics">
+                        <div class="metric">
+                            <span class="metric-value" id="metric-messages">0</span>
+                            <span class="metric-label">Messages</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-value" id="metric-avg-time">0</span>
+                            <span class="metric-label">Avg ms</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-value" id="metric-total-time">0</span>
+                            <span class="metric-label">Total ms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Feed -->
+                <div class="activity-section">
+                    <div class="panel-header">
+                        <h2>
+                            <!-- Clock icon -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            Activity
+                        </h2>
+                    </div>
+                    <div class="activity-feed" id="activity-feed">
+                        <div class="activity-item system">
+                            <span class="activity-time">--:--</span>
+                            <span class="activity-text">System initialized</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assets Section -->
+                <div class="assets-section">
+                    <div class="panel-header">
+                        <h2>
+                            <!-- Truck icon -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M10 17h4V5H2v12h3" />
+                                <circle cx="7.5" cy="17.5" r="2.5" />
+                                <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
+                                <circle cx="17.5" cy="17.5" r="2.5" />
+                            </svg>
+                            Assets
+                        </h2>
+                        <span class="badge" id="asset-count">0</span>
+                    </div>
+                    <div class="panel-content" id="assets-list"></div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Agent Workflow Graph Modal -->
+        <div class="modal full-screen-modal" id="agent-graph-modal">
+            <div class="modal-content graph-content">
+                <div class="modal-header">
+                    <h3>Agent Workflow Visualization</h3>
+                    <div class="graph-legend">
+                        <div class="legend-item"><span class="dot active"></span> Active</div>
+                        <div class="legend-item"><span class="dot idle"></span> Idle</div>
+                    </div>
+                    <button class="modal-close" id="close-graph-modal">×</button>
+                </div>
+                <div class="modal-body graph-body" id="agent-workflow-graph">
+                    <!-- Graph will be rendered here via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Incident Modal -->
+        <div class="modal" id="create-incident-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create Incident</h3>
+                    <button class="modal-close" id="close-incident-modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="incident-type">
+                            <option value="flood_rescue">Flood Rescue</option>
+                            <option value="medical_emergency">Medical Emergency</option>
+                            <option value="structural_collapse">Structural Collapse</option>
+                            <option value="evacuation">Evacuation</option>
+                            <option value="road_blockage">Road Blockage</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="incident-priority">
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" id="incident-description" placeholder="Describe the situation...">
+                    </div>
+                    <div class="form-group">
+                        <label>Affected Count</label>
+                        <input type="number" id="incident-affected" value="1" min="0">
+                    </div>
+                    <p class="form-hint">Click on the map to set location</p>
+                    <input type="hidden" id="incident-lat">
+                    <input type="hidden" id="incident-lng">
+                    <button class="btn-primary" id="btn-create-incident"
+                        style="width: 100%; margin-top: 16px; justify-content: center;">
+                        Create Incident
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deploy Asset Modal -->
+        <div class="modal" id="deploy-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Deploy Asset</h3>
+                    <button class="modal-close" id="close-deploy-modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Select Asset</label>
+                        <select id="deploy-asset-select"></select>
+                    </div>
+                    <p id="deploy-target-info"
+                        style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;"></p>
+                    <button class="btn-primary" id="btn-confirm-deploy" style="width: 100%; justify-content: center;">
+                        Deploy Asset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Modal -->
+        <div class="modal full-screen-modal" id="login-modal" style="z-index: 2000; background: rgba(0,0,0,0.95);">
+            <div class="modal-content login-content" style="max-width: 400px; text-align: center;">
+                <div class="logo-large" style="margin-bottom: 2rem;">
+                    <div class="logo-icon" style="width: 64px; height: 64px; margin: 0 auto 16px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M2 12h20" />
+                            <path
+                                d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                        </svg>
+                    </div>
+                    <h1>HurricaneOps</h1>
+                    <p style="color: var(--text-secondary);">Secure Command Platform</p>
+                </div>
+
+                <form id="login-form">
+                    <div class="form-group">
+                        <input type="text" id="login-username" placeholder="Username" required
+                            style="width: 100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: white; border-radius: 8px;">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="login-password" placeholder="Password" required
+                            style="width: 100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: white; border-radius: 8px;">
+                    </div>
+                    <div id="login-error"
+                        style="color: var(--danger); margin-bottom: 1rem; font-size: 0.9rem; display: none;"></div>
+                    <button type="submit" class="btn-primary"
+                        style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;">
+                        Login
+                    </button>
+                    <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
+                        Default: admin / admin
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Processing...</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+
+</html>
